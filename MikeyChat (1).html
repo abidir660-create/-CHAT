@@ -1,0 +1,765 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+
+<title>MikeyChat</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  if (window.tailwind) {
+    tailwind.config = { theme: { extend: {
+      colors: {
+        brand: { DEFAULT: '#ff5a2c', 600: '#e94a1d' },
+        ink: { 950: '#0b0a16', 900: '#12112a', 800: '#1b1a38', 700: '#26244a' },
+        arena: '#ffc233', chat: '#6d56ff'
+      },
+      fontFamily: {
+        display: ['Bricolage Grotesque', 'system-ui', 'sans-serif'],
+        sans: ['DM Sans', 'system-ui', 'sans-serif']
+      }
+    } } };
+  }
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=DM+Sans:wght@400;500;700&display=swap">
+<style>
+  :root { color-scheme: dark; }
+  html, body { background: #0b0a16; color: #f1f0fb; }
+  body { font-family: 'DM Sans', system-ui, sans-serif; font-size: 16px; margin: 0; }
+  .font-display { font-family: 'Bricolage Grotesque', system-ui, sans-serif; }
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+  .no-scrollbar { scrollbar-width: none; }
+  .ring-story { background: conic-gradient(#ff5a2c, #ffc233, #6d56ff, #ff5a2c); }
+  .ring-seen { background: #34325a; }
+  .pill { font-size: .7rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; padding: 3px 10px; border-radius: 99px; background: rgba(255,255,255,.18); }
+  .pop { animation: pop .35s ease; }
+  @keyframes pop { 30% { transform: scale(1.35); } 100% { transform: scale(1); } }
+  .heart-burst { animation: burst .8s ease forwards; }
+  @keyframes burst { 0% { opacity: 0; transform: scale(.4); } 25% { opacity: 1; transform: scale(1.2); } 100% { opacity: 0; transform: scale(1); } }
+  .dots span { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: #a3a1c4; margin: 0 2px; animation: dot 1s infinite; }
+  .dots span:nth-child(2) { animation-delay: .15s; } .dots span:nth-child(3) { animation-delay: .3s; }
+  @keyframes dot { 50% { transform: translateY(-4px); opacity: .5; } }
+  .wave i { display: block; width: 3px; border-radius: 2px; background: currentColor; opacity: .85; }
+  .playing .wave i { animation: wv .6s ease-in-out infinite alternate; }
+  .playing .wave i:nth-child(odd) { animation-delay: .2s; }
+  @keyframes wv { to { transform: scaleY(.4); } }
+  .rec-dot { animation: rec 1s infinite; } @keyframes rec { 50% { opacity: .2; } }
+  .slide-in { animation: slideIn .4s ease; } @keyframes slideIn { from { opacity: 0; transform: translateY(-8px); } }
+  .input { width: 100%; background: #1b1a38; border: 1px solid rgba(255,255,255,.1); border-radius: 12px; padding: 10px 14px; color: #f1f0fb; outline: none; }
+  .input:focus { border-color: #6d56ff; box-shadow: 0 0 0 3px rgba(109,86,255,.25); }
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; border-radius: 12px; padding: 10px 16px; font-weight: 700; font-size: .9rem; transition: transform .1s, background .15s; cursor: pointer; }
+  .btn:active { transform: scale(.97); }
+  .btn-brand { background: #ff5a2c; color: #fff; } .btn-brand:hover { background: #e94a1d; }
+  .btn-ghost { background: #1b1a38; color: #f1f0fb; border: 1px solid rgba(255,255,255,.1); } .btn-ghost:hover { background: #26244a; }
+  .btn-ok { background: #14925a; color: #fff; }
+  .btn:disabled { opacity: .5; cursor: not-allowed; }
+  button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visible { outline: 3px solid #6d56ff; outline-offset: 2px; }
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; } }
+</style>
+
+<div id="app" class="min-h-screen md:flex">
+  <!-- Desktop sidebar -->
+  <aside class="hidden md:flex fixed inset-y-0 left-0 w-64 flex-col justify-between border-r border-white/10 bg-ink-950 p-4 z-30">
+    <div>
+      <div class="font-display text-3xl font-extrabold tracking-tight px-3 py-4">mikey<span class="text-brand">Chat</span></div>
+      <nav id="sideNav" class="flex flex-col gap-1" aria-label="Main"></nav>
+      <button class="btn btn-brand w-full mt-4" data-act="create" data-tab="post">New post</button>
+    </div>
+    <div id="sideUser"></div>
+  </aside>
+
+  <div class="md:ml-64 flex-1 min-w-0 pb-20 md:pb-0">
+    <header class="md:hidden sticky top-0 z-30 bg-ink-950/95 backdrop-blur border-b border-white/10 px-4 py-3 flex items-center justify-between">
+      <div class="font-display text-2xl font-extrabold tracking-tight">mikey<span class="text-brand">Chat</span></div>
+      <div id="topUser" class="flex items-center gap-2"></div>
+    </header>
+    <main id="view" class="min-h-[calc(100vh-4rem)]"></main>
+  </div>
+
+  <!-- Mobile bottom nav -->
+  <nav id="botNav" class="md:hidden fixed bottom-0 inset-x-0 z-30 bg-ink-950/95 backdrop-blur border-t border-white/10 flex justify-around py-2" aria-label="Main"></nav>
+</div>
+
+<div id="modal"></div>
+<div id="story"></div>
+<div id="toast" class="fixed bottom-24 md:bottom-8 left-1/2 -translate-x-1/2 z-[70] pointer-events-none"></div>
+
+<script>
+(() => {
+'use strict';
+
+/* ---------- helpers ---------- */
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const uid = () => Math.random().toString(36).slice(2, 9);
+const now = () => Date.now();
+const pad = n => String(n).padStart(2, '0');
+const KEY = 'mikeychat.v1', UKEY = 'mikeychat.user';
+
+const ICONS = {
+  home: 'M3 11l9-8 9 8M5 10v10h5v-6h4v6h5V10',
+  chat: 'M21 12a8 8 0 01-11.6 7.1L4 20l1-4.6A8 8 0 1121 12z',
+  trophy: 'M8 4h8v5a4 4 0 01-8 0V4zM8 6H4v1a4 4 0 004 4M16 6h4v1a4 4 0 01-4 4M12 13v4M8 20h8M10 17h4',
+  shield: 'M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6l8-3z',
+  heart: 'M12 20.5C5 15.5 3 12 3 8.9 3 6.7 4.7 5 6.9 5c1.9 0 3.2 1 5.1 3 1.9-2 3.2-3 5.1-3C19.3 5 21 6.7 21 8.9c0 3.1-2 6.6-9 11.6z',
+  send: 'M3 11l18-8-8 18-2-8-8-2z',
+  plus: 'M12 5v14M5 12h14',
+  mic: 'M12 3a3 3 0 00-3 3v6a3 3 0 006 0V6a3 3 0 00-3-3zM6 11a6 6 0 0012 0M12 17v4',
+  image: 'M4 5h16v14H4zM4 16l5-5 4 4 3-3 4 4M9 9h.01',
+  x: 'M6 6l12 12M18 6L6 18',
+  lock: 'M6 11h12v9H6zM8 11V8a4 4 0 018 0v3',
+  check: 'M5 12l5 5 9-10',
+  clock: 'M12 4a8 8 0 100 16 8 8 0 000-16zM12 8v4l3 2',
+  users: 'M9 11a3 3 0 100-6 3 3 0 000 6zM3 20c0-3.3 2.7-6 6-6s6 2.700 6 6M16 5a3 3 0 010 6M17 14c2.500.5 4 2.700 4 6',
+  bookmark: 'M7 4h10v16l-5-4-5 4z',
+  play: 'M8 5v14l11-7z',
+  back: 'M15 5l-7 7 7 7',
+  trash: 'M5 7h14M9 7V4h6v3M7 7l1 13h8l1-13',
+  share: 'M12 4v11M8 8l4-4 4 4M5 14v6h14v-6',
+  out: 'M10 4H5v16h5M15 8l4 4-4 4M19 12H9'
+};
+const ic = (n, c = 'w-5 h-5', fill = false) =>
+  `<svg class="${c}" viewBox="0 0 24 24" fill="${fill ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${ICONS[n]}"/></svg>`;
+
+const GRADS = [
+  'linear-gradient(135deg,#ff5a2c,#6d56ff)',
+  'linear-gradient(135deg,#0ea5e9,#22d3ee 50%,#a3e635)',
+  'linear-gradient(135deg,#f43f5e,#fb923c,#facc15)',
+  'linear-gradient(135deg,#7c3aed,#ec4899)',
+  'linear-gradient(135deg,#065f46,#34d399)',
+  'linear-gradient(160deg,#111827,#4f46e5)'
+];
+const hue = s => { let h = 0; for (const c of String(s)) h = (h * 31 + c.charCodeAt(0)) % 360; return h; };
+const av = (name, size = 40) => {
+  const h = hue(name);
+  return `<span class="inline-grid place-items-center rounded-full font-bold text-white shrink-0 select-none" style="width:${size}px;height:${size}px;font-size:${size * .42}px;background:linear-gradient(135deg,hsl(${h} 80% 55%),hsl(${(h + 50) % 360} 75% 40%))">${esc(String(name).trim().charAt(0).toUpperCase() || '?')}</span>`;
+};
+const ago = ts => {
+  const s = Math.max(1, Math.floor((now() - ts) / 1000));
+  if (s < 60) return 'now';
+  if (s < 3600) return Math.floor(s / 60) + 'm';
+  if (s < 86400) return Math.floor(s / 3600) + 'h';
+  return Math.floor(s / 86400) + 'd';
+};
+const clock = ts => { const d = new Date(ts); return pad(d.getHours()) + ':' + pad(d.getMinutes()); };
+const clock2 = ts => { const d = new Date(ts); return pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds()); };
+const toLocalInput = ms => { const d = new Date(ms - new Date(ms).getTimezoneOffset() * 60000); return d.toISOString().slice(0, 16); };
+
+/* ---------- state ---------- */
+const BOTS = ['lina.m', 'omar_x', 'hind.z', 'karim.ph', 'nora.s', 'adam.b', 'salma.r', 'ilyas', 'yara.k', 'mehdi.d', 'sofia_a', 'anas.l', 'rim.t', 'zaid.q', 'dina.f', 'tariq', 'meryem', 'ayoub.k'];
+
+function seed() {
+  const t = now(), h = 3600e3, d = 24 * h;
+  const P = (names, ago0) => names.map((n, i) => ({ name: n, at: t - ago0 + i * 60e3 }));
+  return {
+    demo: true,
+    contacts: [
+      { id: 'sara', name: 'Sara K.' }, { id: 'yassine', name: 'Yassine' }, { id: 'lina', name: 'Lina M.' },
+      { id: 'omar', name: 'Omar' }, { id: 'hind', name: 'Hind Z.' }
+    ],
+    stories: [
+      { id: 's1', user: 'Sara K.', seen: false, slides: [{ text: 'Golden hour at the pier', bg: 2, t: t - 2 * h }, { text: 'Anyone up for a walk?', bg: 1, t: t - h }] },
+      { id: 's2', user: 'Yassine', seen: false, slides: [{ text: 'New beat dropping tonight', bg: 5, t: t - 4 * h }] },
+      { id: 's3', user: 'Lina M.', seen: false, slides: [{ text: 'Mikey Arena is live!', bg: 0, t: t - 3 * h }] },
+      { id: 's4', user: 'Omar', seen: true, slides: [{ text: 'Gym day', bg: 4, t: t - 6 * h }] },
+      { id: 's5', user: 'Hind Z.', seen: false, slides: [{ text: 'Coffee first', bg: 3, t: t - 5 * h }] }
+    ],
+    posts: [
+      { id: 'p1', author: 'Sara K.', bg: 2, tag: 'Sunset session', caption: 'Sunset session at the pier. The light was unreal today.', base: 1284, likedBy: [], saved: [], t: t - 2 * h,
+        comments: [{ u: 'Yassine', text: 'Insane colors!', t: t - 90 * 60e3 }, { u: 'Lina M.', text: 'Where is this?', t: t - 60 * 60e3 }, { u: 'Omar', text: 'Taking me there next week', t: t - 30 * 60e3 }] },
+      { id: 'p2', author: 'Yassine', bg: 5, tag: 'Studio night', caption: 'Late night in the studio. New track dropping Friday.', base: 642, likedBy: [], saved: [], t: t - 5 * h,
+        comments: [{ u: 'Hind Z.', text: 'Cannot wait!', t: t - 4 * h }] },
+      { id: 'p3', author: 'Lina M.', bg: 1, tag: 'Mikey Arena', caption: 'Just entered the Summer Photo Challenge. Good luck everyone!', base: 391, likedBy: [], saved: [], t: t - 9 * h, comments: [] }
+    ],
+    chats: {
+      sara: [{ id: uid(), from: 'them', type: 'text', text: 'Hey! Did you see Mikey Arena is live?', t: t - 9 * 60e3 }, { id: uid(), from: 'them', type: 'text', text: 'There is an iPhone prize this week', t: t - 8 * 60e3 }],
+      yassine: [{ id: uid(), from: 'me', type: 'text', text: 'Studio tonight?', t: t - 3 * h, status: 'read' }, { id: uid(), from: 'them', type: 'text', text: 'Yes, come at 9', t: t - 3 * h + 120e3 }]
+    },
+    unread: { sara: 2 },
+    contests: [
+      { id: 'c1', title: 'Summer Photo Challenge', desc: 'Share your best summer shot and let the community vote with likes.',
+        rules: ['One entry per person', 'Original photos only', 'Post with #mikeysummer', 'Winner drawn from top-liked entries'],
+        prizes: [{ place: '1st', prize: 'iPhone 16' }, { place: '2nd', prize: '$150 gift card' }, { place: '3rd', prize: 'MikeyChat Pro, 1 year' }],
+        ends: t + 3 * d + 4 * h, created: t - 2 * d, ended: false, winner: null, participants: P(['sara.k', 'yassine', 'lina.m', 'omar_x', 'hind.z', 'karim.ph'], 5 * h) },
+      { id: 'c2', title: 'Flash Reel Contest', desc: 'Post a 15 second reel about your day. Quick contest, quick prizes.',
+        rules: ['Reels up to 15 seconds', 'No copyrighted music', 'One entry per person'],
+        prizes: [{ place: '1st', prize: 'Wireless earbuds' }, { place: '2nd', prize: '$50 gift card' }],
+        ends: t + 2 * h + 17 * 60e3, created: t - h, ended: false, winner: null, participants: P(['nora.s', 'adam.b', 'salma.r'], 50 * 60e3) },
+      { id: 'c3', title: 'Spring Dance Week', desc: 'Dance clips from all over the community. This one is finished.',
+        rules: ['One clip per person', 'Max 30 seconds'],
+        prizes: [{ place: '1st', prize: '$300 cash' }],
+        ends: t - 2 * d, created: t - 9 * d, ended: false, winner: 'hind.z', participants: P(['hind.z', 'ilyas', 'yara.k', 'mehdi.d', 'sofia_a'], 5 * d) }
+    ]
+  };
+}
+const load = () => {
+  try { const raw = localStorage.getItem(KEY); if (raw) return JSON.parse(raw); } catch (e) {}
+  const s = seed(); try { localStorage.setItem(KEY, JSON.stringify(s)); } catch (e) {} return s;
+};
+let S = load();
+let U = null; try { U = JSON.parse(sessionStorage.getItem(UKEY)); } catch (e) {}
+const save = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); return true; } catch (e) { toast('Storage is full. Try removing large images.'); return false; } };
+const saveUser = () => { try { U ? sessionStorage.setItem(UKEY, JSON.stringify(U)) : sessionStorage.removeItem(UKEY); } catch (e) {} };
+
+let view = 'home', activeChat = null, filter = 'live', openCmt = new Set(), typing = {}, rec = null, draft = '', csearch = '', confirmDel = null, lastSig = '';
+if (innerWidth >= 768) activeChat = 'sara';
+
+const isEnded = c => c.ended || now() >= c.ends;
+const hasJoined = c => !!U && c.participants.some(p => p.name.toLowerCase() === U.name.toLowerCase());
+const unreadTotal = () => Object.values(S.unread || {}).reduce((a, b) => a + b, 0);
+
+/* ---------- toast + modal ---------- */
+let toastT;
+function toast(msg) {
+  const el = $('#toast');
+  el.innerHTML = `<div class="bg-white text-ink-950 text-sm font-bold px-4 py-2.5 rounded-full shadow-xl slide-in">${esc(msg)}</div>`;
+  clearTimeout(toastT); toastT = setTimeout(() => el.innerHTML = '', 2600);
+}
+function openModal(html, wide = false) {
+  $('#modal').innerHTML = `<div class="fixed inset-0 z-[60] bg-black/70 backdrop-blur-sm grid place-items-center p-4" data-act="closeModal" data-backdrop="1">
+    <div class="w-full ${wide ? 'max-w-lg' : 'max-w-sm'} max-h-[90vh] overflow-auto rounded-3xl bg-ink-900 border border-white/10 p-6 shadow-2xl" role="dialog" aria-modal="true">${html}</div></div>`;
+  const f = $('#modal input, #modal textarea'); if (f) f.focus();
+}
+const closeModal = () => { $('#modal').innerHTML = ''; };
+
+/* ---------- auth (mock) ---------- */
+function openLogin(msg) {
+  openModal(`<form data-form="login" class="space-y-4">
+    <div class="font-display text-2xl font-extrabold">Log in to mikey<span class="text-brand">Chat</span></div>
+    <p class="text-sm text-slate-400">${esc(msg || 'This is a mock login. Pick any name.')}</p>
+    <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider" for="loginName">Your name</label>
+    <input id="loginName" name="name" class="input" maxlength="20" placeholder="e.g. Mikey" autocomplete="off" required>
+    <button class="btn btn-brand w-full" type="submit" name="role" value="user">Log in</button>
+    <button class="btn btn-ghost w-full" type="submit" name="role" value="admin">${ic('shield', 'w-4 h-4')} Log in as Admin (owner)</button>
+    <p class="text-xs text-slate-500">Tip: open this page in a second tab as a regular user and join a contest. The admin tab updates live.</p>
+  </form>`);
+}
+function login(name, admin) {
+  name = name.trim().slice(0, 20); if (!name) return;
+  U = { name, admin: !!admin }; saveUser(); closeModal();
+  toast(admin ? 'Welcome back, admin ' + name : 'Welcome, ' + name);
+  renderAll();
+}
+function logout() { U = null; saveUser(); if (view === 'admin') view = 'home'; renderAll(); toast('Logged out'); }
+const needLogin = msg => { if (U) return false; openLogin(msg); return true; };
+
+/* ---------- navigation ---------- */
+const NAV = [
+  { id: 'home', label: 'Home', icon: 'home' },
+  { id: 'dm', label: 'Messages', icon: 'chat' },
+  { id: 'arena', label: 'Mikey Arena', icon: 'trophy' },
+  { id: 'admin', label: 'Admin', icon: 'shield', admin: true }
+];
+function renderNav() {
+  const items = NAV.filter(n => !n.admin || (U && U.admin));
+  const unread = unreadTotal();
+  const badge = n => n.id === 'dm' && unread ? `<span class="ml-auto md:ml-2 bg-brand text-white text-[10px] font-bold rounded-full px-1.5 py-0.5">${unread}</span>` : '';
+  const lock = n => n.id === 'arena' && !U ? ic('lock', 'w-3.5 h-3.5 text-slate-500 ml-auto') : '';
+  $('#sideNav').innerHTML = items.map(n => `<button data-act="nav" data-id="${n.id}" class="flex items-center gap-3 px-3 py-3 rounded-xl text-left font-medium transition ${view === n.id ? 'bg-ink-800 text-white' : 'text-slate-400 hover:bg-ink-900 hover:text-white'}" ${view === n.id ? 'aria-current="page"' : ''}>
+    ${ic(n.icon, 'w-6 h-6')}<span>${n.label}</span>${badge(n)}${lock(n)}</button>`).join('');
+  $('#botNav').innerHTML = items.map(n => `<button data-act="nav" data-id="${n.id}" aria-label="${n.label}" class="relative flex flex-col items-center gap-0.5 px-4 py-1 text-[11px] ${view === n.id ? 'text-brand font-bold' : 'text-slate-400'}">
+    ${ic(n.icon, 'w-6 h-6')}${n.id === 'dm' && unread ? `<span class="absolute top-0 right-2 bg-brand text-white text-[9px] font-bold rounded-full px-1">${unread}</span>` : ''}
+    ${n.id === 'arena' && !U ? `<span class="absolute top-0 right-2 text-slate-500">${ic('lock', 'w-3 h-3')}</span>` : ''}
+    <span>${n.id === 'arena' ? 'Arena' : n.label}</span></button>`).join('');
+}
+function renderUser() {
+  $('#sideUser').innerHTML = U
+    ? `<div class="flex items-center gap-3 p-3 rounded-2xl bg-ink-900 border border-white/10">${av(U.name, 40)}
+        <div class="min-w-0 flex-1"><div class="font-bold truncate">${esc(U.name)}</div><div class="text-xs ${U.admin ? 'text-arena' : 'text-slate-400'}">${U.admin ? 'Admin' : 'Member'}</div></div>
+        <button data-act="logout" class="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-ink-800" aria-label="Log out">${ic('out')}</button></div>`
+    : `<button class="btn btn-ghost w-full" data-act="login">Log in</button>`;
+  $('#topUser').innerHTML = U
+    ? `<button data-act="create" data-tab="post" class="btn btn-brand !px-3 !py-2" aria-label="New post">${ic('plus', 'w-4 h-4')}</button>
+       <button data-act="logout" aria-label="Log out (${esc(U.name)})">${av(U.name, 34)}</button>`
+    : `<button class="btn btn-brand !py-2" data-act="login">Log in</button>`;
+}
+function setView(v) {
+  if (v === 'admin' && !(U && U.admin)) v = 'home';
+  view = v; renderNav(); renderView(); scrollTo(0, 0);
+}
+function renderAll() { if (view === 'admin' && !(U && U.admin)) view = 'home'; renderNav(); renderUser(); renderView(); }
+function renderView() {
+  ({ home: viewHome, dm: viewDM, arena: viewArena, admin: viewAdmin })[view]();
+}
+
+/* ---------- HOME: stories + feed ---------- */
+function viewHome() {
+  $('#view').innerHTML = `<div class="max-w-xl mx-auto sm:px-4 py-4">
+    <div id="stories" class="flex gap-4 overflow-x-auto no-scrollbar px-4 sm:px-0 pb-4"></div>
+    <div id="feed"></div></div>`;
+  renderStories(); renderFeed();
+}
+function renderStories() {
+  const el = $('#stories'); if (!el) return;
+  const mine = U && S.stories.find(s => s.user === U.name);
+  el.innerHTML = `<button data-act="${mine ? 'story' : 'create'}" data-id="${mine ? mine.id : ''}" data-tab="story" class="flex flex-col items-center gap-1.5 shrink-0 w-[68px]">
+      <span class="relative">${U ? av(U.name, 64) : `<span class="grid place-items-center w-16 h-16 rounded-full bg-ink-800">${ic('users', 'w-6 h-6 text-slate-400')}</span>`}
+        <span class="absolute -bottom-0.5 -right-0.5 grid place-items-center w-6 h-6 rounded-full bg-brand text-white border-2 border-ink-950">${ic('plus', 'w-3.5 h-3.5')}</span></span>
+      <span class="text-xs text-slate-300">Your story</span></button>` +
+    S.stories.filter(s => !(U && s.user === U.name)).map(s => `<button data-act="story" data-id="${s.id}" class="flex flex-col items-center gap-1.5 shrink-0 w-[68px]">
+      <span class="${s.seen ? 'ring-seen' : 'ring-story'} p-[3px] rounded-full">${`<span class="block p-[2px] rounded-full bg-ink-950">${av(s.user, 58)}</span>`}</span>
+      <span class="text-xs ${s.seen ? 'text-slate-500' : 'text-slate-200'} truncate w-full text-center">${esc(s.user.split(' ')[0])}</span></button>`).join('');
+}
+const likes = p => p.base + p.likedBy.length;
+function postHTML(p) {
+  const liked = U && p.likedBy.includes(U.name), saved = U && p.saved.includes(U.name);
+  const open = openCmt.has(p.id);
+  const shown = open ? p.comments : p.comments.slice(-2);
+  return `<article id="post-${p.id}" class="border-y sm:border border-white/10 sm:rounded-3xl sm:mb-6 mb-4 bg-ink-900/60 overflow-hidden">
+    <div class="flex items-center gap-3 px-4 py-3">${av(p.author, 36)}<div class="font-bold text-sm">${esc(p.author)}</div><div class="text-xs text-slate-500">· ${ago(p.t)}</div></div>
+    <div data-dbl="${p.id}" class="relative aspect-square grid place-items-center select-none overflow-hidden" style="background:${p.img ? '#000' : GRADS[p.bg % GRADS.length]}">
+      ${p.img ? `<img src="${p.img}" alt="Post by ${esc(p.author)}" class="w-full h-full object-cover">` : `<span class="font-display text-3xl sm:text-4xl font-extrabold text-white/90 px-8 text-center leading-tight drop-shadow">${esc(p.tag || '')}</span>`}
+      <span class="burst absolute text-white pointer-events-none opacity-0">${ic('heart', 'w-24 h-24', true)}</span>
+    </div>
+    <div class="flex items-center gap-4 px-4 pt-3">
+      <button data-act="like" data-id="${p.id}" class="${liked ? 'text-brand' : 'text-slate-200 hover:text-white'}" aria-pressed="${!!liked}" aria-label="Like">${ic('heart', 'w-7 h-7', !!liked)}</button>
+      <button data-act="cmt" data-id="${p.id}" class="text-slate-200 hover:text-white" aria-label="Comments">${ic('chat', 'w-7 h-7')}</button>
+      <button data-act="share" data-id="${p.id}" class="text-slate-200 hover:text-white" aria-label="Share">${ic('share', 'w-6 h-6')}</button>
+      <button data-act="save" data-id="${p.id}" class="ml-auto ${saved ? 'text-arena' : 'text-slate-200 hover:text-white'}" aria-label="Save">${ic('bookmark', 'w-6 h-6', !!saved)}</button>
+    </div>
+    <div class="px-4 pt-2 text-sm font-bold">${likes(p).toLocaleString('en-US')} likes</div>
+    <p class="px-4 pt-1 text-sm"><b>${esc(p.author)}</b> ${esc(p.caption)}</p>
+    <div class="px-4 pt-2 space-y-1 text-sm">
+      ${!open && p.comments.length > 2 ? `<button data-act="cmt" data-id="${p.id}" class="text-slate-400 hover:text-slate-200">View all ${p.comments.length} comments</button>` : ''}
+      ${shown.map(c => `<div><b>${esc(c.u)}</b> ${esc(c.text)}</div>`).join('')}
+    </div>
+    <form data-form="comment" data-id="${p.id}" class="flex items-center gap-2 px-4 py-3">
+      <input name="text" class="flex-1 bg-transparent text-sm outline-none placeholder:text-slate-500 border-b border-white/10 focus:border-chat py-1.5" placeholder="${U ? 'Add a comment…' : 'Log in to comment'}" maxlength="200" autocomplete="off" aria-label="Add a comment">
+      <button class="text-brand font-bold text-sm">Post</button>
+    </form></article>`;
+}
+function renderFeed() { const el = $('#feed'); if (el) el.innerHTML = S.posts.map(postHTML).join('') || '<p class="text-center text-slate-500 py-10">No posts yet.</p>'; }
+const rerenderPost = id => { const p = S.posts.find(x => x.id === id), el = $('#post-' + id); if (p && el) el.outerHTML = postHTML(p); };
+function toggleLike(id, fromDbl) {
+  if (needLogin('Log in to like posts')) return;
+  const p = S.posts.find(x => x.id === id), i = p.likedBy.indexOf(U.name);
+  if (i >= 0) { if (fromDbl) return burst(id); p.likedBy.splice(i, 1); } else p.likedBy.push(U.name);
+  save(); rerenderPost(id);
+  const b = $(`#post-${id} [data-act=like] svg`); if (b && i < 0) b.classList.add('pop');
+  if (fromDbl) burst(id);
+}
+function burst(id) { const b = $(`#post-${id} .burst`); if (!b) return; b.classList.remove('heart-burst'); void b.offsetWidth; b.classList.add('heart-burst'); }
+
+/* ---------- create post / story ---------- */
+let createState = { tab: 'post', bg: 0, img: null };
+function openCreate(tab) {
+  if (needLogin('Log in to share posts and stories')) return;
+  createState = { tab: tab || 'post', bg: 0, img: null }; drawCreate();
+}
+function drawCreate() {
+  const c = createState;
+  openModal(`<form data-form="create" class="space-y-4">
+    <div class="flex items-center justify-between"><div class="font-display text-2xl font-extrabold">Create</div>
+      <button type="button" data-act="closeModal" class="p-2 text-slate-400 hover:text-white" aria-label="Close">${ic('x')}</button></div>
+    <div class="grid grid-cols-2 gap-1 p-1 rounded-xl bg-ink-800">
+      ${['post', 'story'].map(t => `<button type="button" data-act="ctab" data-tab="${t}" class="py-2 rounded-lg text-sm font-bold capitalize ${c.tab === t ? 'bg-brand text-white' : 'text-slate-400'}">${t}</button>`).join('')}
+    </div>
+    <div class="aspect-[4/3] rounded-2xl grid place-items-center overflow-hidden text-center" style="background:${c.img ? '#000' : GRADS[c.bg]}">
+      ${c.img ? `<img src="${c.img}" alt="Preview" class="w-full h-full object-cover">` : `<span class="font-display text-xl font-extrabold text-white/90 px-6" id="prevText">Your ${c.tab} preview</span>`}
+    </div>
+    <div class="flex items-center gap-2">
+      ${GRADS.map((g, i) => `<button type="button" data-act="cbg" data-i="${i}" aria-label="Background ${i + 1}" class="w-8 h-8 rounded-full border-2 ${c.bg === i && !c.img ? 'border-white' : 'border-transparent'}" style="background:${g}"></button>`).join('')}
+      <label class="btn btn-ghost !px-3 !py-2 ml-auto cursor-pointer">${ic('image', 'w-4 h-4')} Photo<input id="cfile" type="file" accept="image/*" class="hidden"></label>
+    </div>
+    <label class="sr-only" for="ccap">Caption</label>
+    <textarea id="ccap" name="caption" class="input" rows="3" maxlength="200" placeholder="Write a caption…"></textarea>
+    <button class="btn btn-brand w-full" type="submit">Share ${c.tab}</button></form>`, true);
+  const cap = $('#ccap'); cap.focus();
+  cap.addEventListener('input', () => { const pt = $('#prevText'); if (pt) pt.textContent = cap.value || `Your ${c.tab} preview`; });
+}
+function shrink(file) {
+  return new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onerror = rej;
+    r.onload = () => { const im = new Image(); im.onerror = rej; im.onload = () => {
+      const m = 900, k = Math.min(1, m / Math.max(im.width, im.height)), cv = document.createElement('canvas');
+      cv.width = im.width * k; cv.height = im.height * k; cv.getContext('2d').drawImage(im, 0, 0, cv.width, cv.height);
+      res(cv.toDataURL('image/jpeg', .8)); }; im.src = r.result; };
+    r.readAsDataURL(file);
+  });
+}
+function submitCreate(caption) {
+  const c = createState; caption = caption.trim();
+  if (!caption && !c.img) return toast('Add a caption or a photo');
+  if (c.tab === 'post') {
+    S.posts.unshift({ id: uid(), author: U.name, bg: c.bg, img: c.img, tag: caption.slice(0, 40), caption: caption || '', base: 0, likedBy: [], saved: [], comments: [], t: now() });
+  } else {
+    const slide = { text: caption, bg: c.bg, img: c.img, t: now() }, mine = S.stories.find(s => s.user === U.name);
+    if (mine) { mine.slides.push(slide); mine.seen = false; } else S.stories.unshift({ id: uid(), user: U.name, seen: false, slides: [slide] });
+  }
+  if (!save()) return;
+  closeModal(); toast(c.tab === 'post' ? 'Post shared' : 'Story added for 24 hours');
+  if (view !== 'home') setView('home'); else { renderStories(); renderFeed(); }
+}
+
+/* ---------- story viewer ---------- */
+let sv = null;
+function openStory(id) {
+  const i = S.stories.findIndex(s => s.id === id); if (i < 0) return;
+  sv = { i, j: 0, t0: performance.now(), timer: setInterval(tickStory, 50) }; drawStory();
+}
+function drawStory() {
+  const st = S.stories[sv.i], sl = st.slides[sv.j]; st.seen = true; sv.t0 = performance.now();
+  $('#story').innerHTML = `<div class="fixed inset-0 z-[65] bg-black grid place-items-center" role="dialog" aria-modal="true" aria-label="Story by ${esc(st.user)}">
+    <div class="relative w-full h-full sm:h-[92vh] sm:max-w-sm sm:rounded-3xl overflow-hidden grid place-items-center" style="background:${sl.img ? '#000' : GRADS[sl.bg % GRADS.length]}">
+      ${sl.img ? `<img src="${sl.img}" alt="" class="absolute inset-0 w-full h-full object-cover">` : ''}
+      ${sl.text ? `<p class="relative font-display text-3xl font-extrabold text-white text-center px-8 leading-tight drop-shadow-lg ${sl.img ? 'mt-auto mb-16 text-xl' : ''}">${esc(sl.text)}</p>` : ''}
+      <div class="absolute top-0 inset-x-0 p-3 bg-gradient-to-b from-black/60 to-transparent">
+        <div class="flex gap-1">${st.slides.map((_, k) => `<div class="h-1 flex-1 rounded bg-white/30 overflow-hidden"><div data-bar="${k}" class="h-full bg-white" style="width:${k < sv.j ? 100 : 0}%"></div></div>`).join('')}</div>
+        <div class="flex items-center gap-2 mt-3">${av(st.user, 32)}<span class="font-bold text-sm text-white">${esc(st.user)}</span><span class="text-xs text-white/70">${ago(sl.t)}</span>
+          <button data-act="storyClose" class="ml-auto text-white p-1" aria-label="Close story">${ic('x')}</button></div>
+      </div>
+      <button data-act="storyPrev" class="absolute left-0 top-20 bottom-0 w-1/3" aria-label="Previous"></button>
+      <button data-act="storyNext" class="absolute right-0 top-20 bottom-0 w-2/3" aria-label="Next"></button>
+    </div></div>`;
+}
+function tickStory() {
+  if (!sv) return; const p = Math.min(1, (performance.now() - sv.t0) / 5000), b = $(`[data-bar="${sv.j}"]`);
+  if (b) b.style.width = p * 100 + '%'; if (p >= 1) storyNext();
+}
+function storyNext() {
+  const st = S.stories[sv.i]; sv.j++;
+  if (sv.j >= st.slides.length) { sv.i++; sv.j = 0; if (sv.i >= S.stories.length) return storyClose(); }
+  drawStory();
+}
+function storyPrev() { if (sv.j > 0) sv.j--; else if (sv.i > 0) { sv.i--; sv.j = 0; } drawStory(); }
+function storyClose() { if (sv) clearInterval(sv.timer); sv = null; $('#story').innerHTML = ''; save(); if (view === 'home') renderStories(); }
+
+/* ---------- DIRECT MESSAGES ---------- */
+const contact = id => S.contacts.find(c => c.id === id);
+const lastMsg = id => (S.chats[id] || []).slice(-1)[0];
+function viewDM() {
+  $('#view').innerHTML = `<div class="h-[calc(100vh-4rem)] md:h-screen flex">
+    <section class="${activeChat ? 'hidden md:flex' : 'flex'} flex-col w-full md:w-80 lg:w-96 border-r border-white/10 shrink-0">
+      <div class="p-4 space-y-3"><div class="font-display text-2xl font-extrabold">Messages</div>
+        <label class="sr-only" for="csearch">Search chats</label>
+        <input id="csearch" class="input" placeholder="Search" value="${esc(csearch)}" autocomplete="off"></div>
+      <div id="contactList" class="flex-1 overflow-y-auto"></div></section>
+    <section id="chatPane" class="${activeChat ? 'flex' : 'hidden md:flex'} flex-col flex-1 min-w-0"></section></div>`;
+  renderContacts(); renderChatPane();
+}
+function renderContacts() {
+  const el = $('#contactList'); if (!el) return;
+  const list = S.contacts.filter(c => c.name.toLowerCase().includes(csearch.toLowerCase()));
+  el.innerHTML = list.map(c => {
+    const m = lastMsg(c.id), un = (S.unread || {})[c.id] || 0;
+    const prev = m ? (m.type === 'voice' ? 'Voice note' : m.type === 'img' ? 'Photo' : m.text) : 'Say hi';
+    return `<button data-act="chat" data-id="${c.id}" class="w-full flex items-center gap-3 px-4 py-3 text-left transition ${activeChat === c.id ? 'bg-ink-800' : 'hover:bg-ink-900'}">
+      <span class="relative">${av(c.name, 48)}<span class="absolute bottom-0 right-0 w-3 h-3 rounded-full bg-emerald-400 border-2 border-ink-950"></span></span>
+      <span class="min-w-0 flex-1"><span class="block font-bold text-sm">${esc(c.name)}</span>
+      <span class="block text-sm truncate ${un ? 'text-white font-medium' : 'text-slate-400'}">${m && m.from === 'me' ? 'You: ' : ''}${esc(prev)}</span></span>
+      <span class="flex flex-col items-end gap-1 text-xs text-slate-500">${m ? ago(m.t) : ''}${un ? `<span class="bg-brand text-white font-bold rounded-full px-1.5 py-0.5 text-[10px]">${un}</span>` : ''}</span></button>`;
+  }).join('') || '<p class="text-center text-sm text-slate-500 py-8">No chats found</p>';
+}
+function renderChatPane() {
+  const el = $('#chatPane'); if (!el) return;
+  const c = contact(activeChat);
+  if (!c) { el.innerHTML = `<div class="m-auto text-center text-slate-500 p-8">${ic('chat', 'w-14 h-14 mx-auto mb-3 opacity-40')}<div class="font-bold text-slate-300">Your messages</div><div class="text-sm">Pick a chat to start talking.</div></div>`; return; }
+  el.innerHTML = `<div class="flex items-center gap-3 px-4 py-3 border-b border-white/10">
+      <button data-act="chatBack" class="md:hidden p-1 -ml-2 text-slate-300" aria-label="Back">${ic('back')}</button>
+      ${av(c.name, 40)}<div><div class="font-bold text-sm">${esc(c.name)}</div><div class="text-xs text-emerald-400" id="presence">Online</div></div></div>
+    <div id="msgs" class="flex-1 overflow-y-auto px-4 py-4 space-y-2"></div>
+    <div id="composer" class="border-t border-white/10 p-3"></div>`;
+  renderMsgs(); renderComposer();
+}
+function bubble(m, isLastMine) {
+  const mine = m.from === 'me';
+  const body = m.type === 'voice'
+    ? `<button data-act="play" data-id="${m.id}" data-d="${m.dur}" class="flex items-center gap-3" aria-label="Play voice note">${ic('play', 'w-5 h-5', true)}
+        <span class="wave flex items-center gap-[3px] h-6">${Array.from({ length: 18 }, (_, i) => `<i style="height:${6 + ((i * 7 + m.dur * 3) % 14)}px"></i>`).join('')}</span><span class="text-xs tabular-nums">0:${pad(m.dur)}</span></button>`
+    : m.type === 'img' ? `<img src="${m.img}" alt="Shared photo" class="rounded-xl max-h-60">` : esc(m.text);
+  const status = isLastMine ? `<div class="text-[11px] text-slate-500 text-right mt-0.5">${m.status === 'read' ? `<span class="text-sky-400">Read ${clock(m.t)}</span>` : m.status === 'delivered' ? 'Delivered' : 'Sent'}</div>` : '';
+  return `<div class="flex flex-col ${mine ? 'items-end' : 'items-start'}"><div class="max-w-[80%] px-4 py-2 rounded-2xl text-sm break-words ${mine ? 'bg-chat text-white rounded-br-md' : 'bg-ink-800 rounded-bl-md'}" data-bub="${m.id}">${body}</div>${status}</div>`;
+}
+function renderMsgs() {
+  const el = $('#msgs'); if (!el) return;
+  const list = S.chats[activeChat] || [];
+  const lastMine = [...list].reverse().find(m => m.from === 'me');
+  el.innerHTML = (list.length ? '' : '<p class="text-center text-sm text-slate-500 pt-10">No messages yet. Say hi!</p>') +
+    list.map(m => bubble(m, lastMine && lastMine.id === m.id)).join('') +
+    (typing[activeChat] ? `<div class="flex"><div class="bg-ink-800 rounded-2xl rounded-bl-md px-4 py-3 dots"><span></span><span></span><span></span></div></div>` : '');
+  el.scrollTop = el.scrollHeight;
+}
+function renderComposer() {
+  const el = $('#composer'); if (!el) return;
+  if (rec) {
+    el.innerHTML = `<div class="flex items-center gap-3"><button data-act="recCancel" class="p-2 text-slate-400 hover:text-white" aria-label="Cancel recording">${ic('trash')}</button>
+      <div class="flex-1 flex items-center gap-2 bg-ink-800 rounded-full px-4 py-2.5 text-sm"><span class="w-2.5 h-2.5 rounded-full bg-red-500 rec-dot"></span>Recording <b id="recT" class="tabular-nums">0:00</b></div>
+      <button data-act="recSend" class="btn btn-brand !rounded-full !p-3" aria-label="Send voice note">${ic('send', 'w-5 h-5')}</button></div>`;
+    return;
+  }
+  el.innerHTML = `<form data-form="msg" class="flex items-center gap-2">
+    <label class="p-2 text-slate-400 hover:text-white cursor-pointer" aria-label="Send photo">${ic('image', 'w-6 h-6')}<input id="mfile" type="file" accept="image/*" class="hidden"></label>
+    <input id="minput" name="text" class="flex-1 bg-ink-800 rounded-full px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-chat" placeholder="Message…" autocomplete="off" aria-label="Message" value="${esc(draft)}">
+    <button type="button" data-act="recStart" class="p-2.5 rounded-full bg-ink-800 text-slate-200 hover:bg-ink-700" aria-label="Record voice note">${ic('mic', 'w-5 h-5')}</button>
+    <button class="btn btn-brand !rounded-full !p-3" aria-label="Send">${ic('send', 'w-5 h-5')}</button></form>`;
+}
+function openChat(id) {
+  activeChat = id; if (S.unread) S.unread[id] = 0; save(); draft = ''; rec = null;
+  renderNav(); viewDM();
+}
+const REPLIES = ['Haha love it 😄', 'Send me more!', 'Wait, are you joining the Arena contest?', 'Let us catch up tonight', 'That is fire 🔥', 'On my way, give me 5 minutes', 'Same here!'];
+function sendMsg(part) {
+  if (needLogin('Log in to send messages')) return;
+  const id = activeChat, msg = { id: uid(), from: 'me', t: now(), status: 'sent', ...part };
+  (S.chats[id] = S.chats[id] || []).push(msg); save(); renderMsgs(); renderContacts();
+  const setSt = s => { const m = (S.chats[id] || []).find(x => x.id === msg.id); if (m) { m.status = s; save(); if (activeChat === id && view === 'dm') renderMsgs(); } };
+  setTimeout(() => setSt('delivered'), 700);
+  setTimeout(() => setSt('read'), 1700);
+  setTimeout(() => { typing[id] = true; if (activeChat === id && view === 'dm') renderMsgs(); }, 2000);
+  setTimeout(() => {
+    typing[id] = false;
+    const text = part.type === 'voice' ? 'Got your voice note, sounds great!' : part.type === 'img' ? 'Nice photo!' : REPLIES[Math.floor(Math.random() * REPLIES.length)];
+    (S.chats[id] = S.chats[id] || []).push({ id: uid(), from: 'them', type: 'text', text, t: now() });
+    if (!(view === 'dm' && activeChat === id)) { S.unread = S.unread || {}; S.unread[id] = (S.unread[id] || 0) + 1; }
+    save(); renderNav();
+    if (view === 'dm') { renderContacts(); if (activeChat === id) renderMsgs(); }
+  }, 4000);
+}
+let recTimer;
+function startRec() {
+  if (needLogin('Log in to send voice notes')) return;
+  rec = { t0: now() }; renderComposer();
+  recTimer = setInterval(() => { const e = $('#recT'); if (e) { const s = Math.floor((now() - rec.t0) / 1000); e.textContent = Math.floor(s / 60) + ':' + pad(s % 60); } }, 250);
+}
+function endRec(send) {
+  clearInterval(recTimer); const dur = Math.min(59, Math.max(1, Math.round((now() - rec.t0) / 1000))); rec = null; renderComposer();
+  if (send) sendMsg({ type: 'voice', dur });
+}
+
+/* ---------- MIKEY ARENA ---------- */
+function cdParts(ms) { ms = Math.max(0, ms); const s = Math.floor(ms / 1000); return { d: Math.floor(s / 86400), h: Math.floor(s % 86400 / 3600), m: Math.floor(s % 3600 / 60), s: s % 60 }; }
+const cdHTML = end => `<div class="grid grid-cols-4 gap-2 mt-4" data-end="${end}" role="timer" aria-label="Time left">${[['d', 'Days'], ['h', 'Hrs'], ['m', 'Min'], ['s', 'Sec']].map(([k, l]) =>
+  `<div class="bg-black/40 rounded-xl py-2 text-center"><div class="font-display text-2xl font-extrabold tabular-nums" data-u="${k}">00</div><div class="text-[10px] uppercase tracking-widest text-white/60">${l}</div></div>`).join('')}</div>`;
+function viewArena() {
+  if (!U) {
+    $('#view').innerHTML = `<div class="max-w-md mx-auto px-6 py-24 text-center space-y-4">
+      <div class="mx-auto w-20 h-20 rounded-full bg-ink-800 grid place-items-center text-arena">${ic('lock', 'w-9 h-9')}</div>
+      <h1 class="font-display text-3xl font-extrabold">Mikey <span class="text-arena">Arena</span> is for members</h1>
+      <p class="text-slate-400">Log in to see live contests, join with one tap and win prizes.</p>
+      <button class="btn btn-brand" data-act="login">Log in</button></div>`;
+    return;
+  }
+  $('#view').innerHTML = `<div class="max-w-5xl mx-auto px-4 py-6 space-y-6">
+    <div class="flex flex-wrap items-end justify-between gap-3"><div><h1 class="font-display text-4xl font-extrabold">Mikey <span class="text-arena">Arena</span></h1>
+      <p class="text-slate-400 text-sm">Join contests, win prizes. Playing as <b class="text-slate-200">${esc(U.name)}</b></p></div>
+      <div class="flex gap-1 p-1 rounded-xl bg-ink-800" role="tablist">${[['live', 'Live'], ['joined', 'Joined'], ['ended', 'Ended']].map(([k, l]) =>
+        `<button role="tab" aria-selected="${filter === k}" data-act="filter" data-id="${k}" class="px-4 py-1.5 rounded-lg text-sm font-bold ${filter === k ? 'bg-arena text-ink-950' : 'text-slate-400 hover:text-white'}">${l}</button>`).join('')}</div></div>
+    <div id="arenaGrid" class="grid gap-5 md:grid-cols-2"></div></div>`;
+  renderArenaGrid();
+}
+function contestCard(c) {
+  const ended = isEnded(c), joined = hasJoined(c), n = c.participants.length;
+  const parts = [...c.participants].reverse();
+  return `<article class="rounded-3xl overflow-hidden border ${ended ? 'border-white/10' : 'border-arena/40'} bg-ink-900 flex flex-col">
+    <div class="p-5" style="background:${ended ? 'linear-gradient(135deg,#1b1a38,#26244a)' : 'linear-gradient(135deg,#2b1d6e,#6d2b8c 60%,#ff5a2c)'}">
+      <div class="flex items-center justify-between"><span class="pill">${ended ? 'Ended' : 'Live'}</span><span class="text-xs text-white/70 flex items-center gap-1">${ic('users', 'w-3.5 h-3.5')}${n.toLocaleString('en-US')} entered</span></div>
+      <h2 class="font-display text-2xl font-extrabold mt-3 leading-tight">${esc(c.title)}</h2>
+      <p class="text-sm text-white/80 mt-1">${esc(c.desc || '')}</p>
+      ${ended ? `<div class="mt-4 rounded-xl bg-black/30 px-4 py-3 text-sm">${c.winner ? `Winner: <b class="text-arena">${esc(c.winner)}</b>` : 'Winner will be announced soon'}</div>` : cdHTML(c.ends)}
+    </div>
+    <div class="p-5 flex-1 flex flex-col gap-4">
+      <div><div class="text-[11px] font-bold uppercase tracking-widest text-slate-500 mb-2">Prizes</div>
+        <ul class="space-y-1.5 text-sm">${c.prizes.map(p => `<li class="flex justify-between gap-3"><span class="text-slate-400">${esc(p.place)}</span><b class="text-arena text-right">${esc(p.prize)}</b></li>`).join('')}</ul></div>
+      ${c.rules.length ? `<div><div class="text-[11px] font-bold uppercase tracking-widest text-slate-500 mb-2">Rules</div>
+        <ul class="space-y-1 text-sm text-slate-300 list-disc pl-5">${c.rules.map(r => `<li>${esc(r)}</li>`).join('')}</ul></div>` : ''}
+      <div><div class="text-[11px] font-bold uppercase tracking-widest text-slate-500 mb-2 flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-emerald-400 rec-dot"></span>Live participants (${n})</div>
+        <div class="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto">${parts.map(p => `<span class="text-xs rounded-full px-2.5 py-1 ${U && p.name.toLowerCase() === U.name.toLowerCase() ? 'bg-brand text-white font-bold' : 'bg-ink-800 text-slate-300'}">${esc(p.name)}</span>`).join('') || '<span class="text-xs text-slate-500">Be the first to join</span>'}</div></div>
+      <button data-act="join" data-id="${c.id}" class="btn ${joined ? 'btn-ok' : 'btn-brand'} w-full mt-auto" ${ended ? 'disabled' : ''} aria-pressed="${joined}">
+        ${ended ? 'Contest ended' : joined ? `${ic('check', 'w-4 h-4')} You are in. Good luck!` : 'Join Contest'}</button>
+    </div></article>`;
+}
+function renderArenaGrid() {
+  const el = $('#arenaGrid'); if (!el) return;
+  const list = S.contests.filter(c => filter === 'live' ? !isEnded(c) : filter === 'ended' ? isEnded(c) : hasJoined(c));
+  el.innerHTML = list.map(contestCard).join('') || `<p class="md:col-span-2 text-center text-slate-500 py-16">${filter === 'joined' ? 'You have not joined any contest yet.' : 'Nothing here right now.'}</p>`;
+  tickCountdowns();
+}
+function join(id) {
+  if (needLogin('Log in to join contests')) return;
+  const c = S.contests.find(x => x.id === id); if (!c) return;
+  if (isEnded(c)) return toast('This contest has ended');
+  if (hasJoined(c)) return toast('You already joined this contest');
+  c.participants.push({ name: U.name, at: now() });
+  if (save()) { toast('You joined "' + c.title + '"'); refreshLive(); }
+}
+function tickCountdowns() {
+  $$('[data-end]').forEach(el => {
+    const p = cdParts(+el.dataset.end - now());
+    if (el.dataset.mode === 'txt') { el.textContent = (p.d ? p.d + 'd ' : '') + pad(p.h) + ':' + pad(p.m) + ':' + pad(p.s); return; }
+    $$('[data-u]', el).forEach(u => { const v = p[u.dataset.u]; const t = pad(v); if (u.textContent !== t) u.textContent = t; });
+  });
+  const sig = S.contests.map(isEnded).join();
+  if (lastSig && sig !== lastSig) { lastSig = sig; refreshLive(); } else lastSig = sig;
+}
+
+/* ---------- ADMIN ---------- */
+const prizeRow = (place = '', prize = '') => `<div class="flex gap-2" data-prize>
+  <input class="input !w-24" name="place" placeholder="1st" value="${esc(place)}" aria-label="Place">
+  <input class="input" name="prize" placeholder="Prize, e.g. iPhone 16" value="${esc(prize)}" aria-label="Prize">
+  <button type="button" data-act="rmPrize" class="p-2 text-slate-500 hover:text-red-400" aria-label="Remove prize">${ic('x', 'w-4 h-4')}</button></div>`;
+function viewAdmin() {
+  $('#view').innerHTML = `<div class="max-w-6xl mx-auto px-4 py-6 space-y-6">
+    <div class="flex flex-wrap items-end justify-between gap-3"><div><div class="pill !bg-arena/20 !text-arena inline-block">Admin only</div>
+      <h1 class="font-display text-4xl font-extrabold mt-2">Arena control</h1><p class="text-slate-400 text-sm">Publish contests and watch entries arrive in real time.</p></div>
+      <label class="flex items-center gap-3 text-sm cursor-pointer select-none"><span class="text-slate-400">Demo traffic (fake joins)</span>
+        <input id="demoSw" type="checkbox" class="w-5 h-5 accent-orange-500" ${S.demo ? 'checked' : ''}></label></div>
+    <div class="grid lg:grid-cols-5 gap-6 items-start">
+      <form data-form="publish" class="lg:col-span-2 rounded-3xl bg-ink-900 border border-white/10 p-5 space-y-4" novalidate>
+        <div class="font-display text-xl font-extrabold">New contest</div>
+        <div><label class="text-xs font-bold text-slate-400 uppercase tracking-wider" for="ctitle">Title</label><input id="ctitle" name="title" class="input mt-1" maxlength="60" placeholder="Summer Photo Challenge"></div>
+        <div><label class="text-xs font-bold text-slate-400 uppercase tracking-wider" for="cdesc">Description</label><textarea id="cdesc" name="desc" rows="2" class="input mt-1" maxlength="160" placeholder="What is this contest about?"></textarea></div>
+        <div><label class="text-xs font-bold text-slate-400 uppercase tracking-wider" for="crules">Rules (one per line)</label><textarea id="crules" name="rules" rows="3" class="input mt-1" placeholder="One entry per person&#10;Original content only"></textarea></div>
+        <div><div class="flex items-center justify-between mb-1"><span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Prizes</span>
+          <button type="button" data-act="addPrize" class="text-xs font-bold text-brand">+ Add prize</button></div>
+          <div id="prizeRows" class="space-y-2">${prizeRow('1st', '')}${prizeRow('2nd', '')}</div></div>
+        <div><label class="text-xs font-bold text-slate-400 uppercase tracking-wider" for="cends">Deadline</label>
+          <input id="cends" name="ends" type="datetime-local" class="input mt-1" value="${toLocalInput(now() + 48 * 3600e3)}">
+          <div class="flex flex-wrap gap-2 mt-2">${[['+1 min', 60e3], ['+1 hour', 3600e3], ['+1 day', 86400e3], ['+7 days', 7 * 86400e3]].map(([l, ms]) => `<button type="button" data-act="quick" data-ms="${ms}" class="btn btn-ghost !py-1 !px-3 !text-xs">${l}</button>`).join('')}</div></div>
+        <p id="pubErr" class="text-sm text-red-400 min-h-[1.25rem]" role="alert"></p>
+        <button class="btn btn-brand w-full" type="submit">Publish to Mikey Arena</button>
+      </form>
+      <div class="lg:col-span-3 space-y-4"><div class="font-display text-xl font-extrabold">All contests</div><div id="adminList" class="space-y-4"></div></div>
+    </div></div>`;
+  renderAdminList();
+}
+function renderAdminList() {
+  const el = $('#adminList'); if (!el) return;
+  el.innerHTML = S.contests.map(c => {
+    const ended = isEnded(c), parts = [...c.participants].reverse();
+    return `<article class="rounded-3xl bg-ink-900 border ${ended ? 'border-white/10' : 'border-arena/30'} p-5 space-y-3">
+      <div class="flex flex-wrap items-start justify-between gap-2">
+        <div><div class="font-bold text-lg">${esc(c.title)}</div>
+          <div class="text-xs text-slate-400 flex items-center gap-2 mt-1"><span class="pill ${ended ? '' : '!bg-emerald-500/20 !text-emerald-300'}">${ended ? 'Ended' : 'Live'}</span>
+          ${ended ? 'Closed' : `${ic('clock', 'w-3.5 h-3.5')}<span data-end="${c.ends}" data-mode="txt" class="tabular-nums"></span>`}</div></div>
+        <div class="text-right"><div class="font-display text-3xl font-extrabold tabular-nums">${c.participants.length.toLocaleString('en-US')}</div><div class="text-[11px] uppercase tracking-widest text-slate-500">participants</div></div></div>
+      ${c.winner ? `<div class="text-sm rounded-xl bg-arena/15 text-arena px-3 py-2">Winner: <b>${esc(c.winner)}</b></div>` : ''}
+      <div class="rounded-2xl bg-ink-950/60 border border-white/5 max-h-52 overflow-y-auto">
+        <div class="px-4 py-2 text-[11px] font-bold uppercase tracking-widest text-slate-500 flex items-center gap-2 sticky top-0 bg-ink-950"><span class="w-2 h-2 rounded-full bg-emerald-400 rec-dot"></span>Live entries</div>
+        ${parts.map((p, i) => `<div class="flex items-center gap-3 px-4 py-2 text-sm border-t border-white/5 ${i === 0 ? 'slide-in' : ''}">${av(p.name, 26)}<span class="font-medium">${esc(p.name)}</span>${c.winner === p.name ? '<span class="pill !bg-arena/20 !text-arena">Winner</span>' : ''}<span class="ml-auto text-xs text-slate-500 tabular-nums">${clock2(p.at)}</span></div>`).join('') || '<div class="px-4 py-3 text-sm text-slate-500 border-t border-white/5">No entries yet.</div>'}
+      </div>
+      <div class="flex flex-wrap gap-2">
+        <button class="btn btn-ghost !py-2 !text-xs" data-act="draw" data-id="${c.id}" ${c.participants.length ? '' : 'disabled'}>Draw winner</button>
+        <button class="btn btn-ghost !py-2 !text-xs" data-act="csv" data-id="${c.id}">Copy CSV</button>
+        ${ended ? '' : `<button class="btn btn-ghost !py-2 !text-xs" data-act="endNow" data-id="${c.id}">End now</button>`}
+        <button class="btn !py-2 !text-xs ${confirmDel === c.id ? 'bg-red-600 text-white' : 'btn-ghost text-red-300'}" data-act="del" data-id="${c.id}">${confirmDel === c.id ? 'Click again to delete' : 'Delete'}</button>
+      </div></article>`;
+  }).join('') || '<p class="text-slate-500">No contests yet. Publish your first one.</p>';
+  tickCountdowns();
+}
+function publish(form) {
+  const f = new FormData(form), err = $('#pubErr');
+  const title = (f.get('title') || '').trim(), desc = (f.get('desc') || '').trim();
+  const rules = (f.get('rules') || '').split('\n').map(s => s.trim()).filter(Boolean);
+  const prizes = $$('[data-prize]', form).map(r => ({ place: $('[name=place]', r).value.trim() || '•', prize: $('[name=prize]', r).value.trim() })).filter(p => p.prize);
+  const ends = new Date(f.get('ends')).getTime();
+  const fail = m => { err.textContent = m; };
+  if (title.length < 3) return fail('Enter a contest title (at least 3 characters).');
+  if (!prizes.length) return fail('Add at least one prize.');
+  if (!ends || ends <= now() + 5000) return fail('Pick a deadline in the future.');
+  S.contests.unshift({ id: uid(), title, desc, rules, prizes, ends, created: now(), ended: false, winner: null, participants: [] });
+  if (!save()) return;
+  toast('Published to Mikey Arena'); viewAdmin();
+}
+const csvOf = c => 'contest,participant,joined_at\n' + c.participants.map(p => [c.title, p.name, new Date(p.at).toISOString()].map(v => '"' + String(v).replace(/"/g, '""') + '"').join(',')).join('\n');
+function copyText(t) {
+  const fallback = () => { const a = document.createElement('textarea'); a.value = t; document.body.appendChild(a); a.select(); try { document.execCommand('copy'); toast('Copied to clipboard'); } catch (e) { toast('Copy failed'); } a.remove(); };
+  if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(t).then(() => toast('Copied to clipboard'), fallback); else fallback();
+}
+
+/* ---------- live refresh (bots, other tabs, timers) ---------- */
+function refreshLive() {
+  renderNav();
+  if (view === 'arena' && U) renderArenaGrid();
+  else if (view === 'admin') renderAdminList();
+  else if (view === 'dm') { renderContacts(); renderMsgs(); }
+  else if (view === 'home' && !(document.activeElement && /INPUT|TEXTAREA/.test(document.activeElement.tagName))) { renderStories(); renderFeed(); }
+}
+setInterval(tickCountdowns, 1000);
+setInterval(() => {
+  if (!S.demo) return;
+  const live = S.contests.filter(c => !isEnded(c)); if (!live.length) return;
+  const c = live[Math.floor(Math.random() * live.length)];
+  const free = BOTS.filter(b => !c.participants.some(p => p.name.toLowerCase() === b.toLowerCase())); if (!free.length) return;
+  c.participants.push({ name: free[Math.floor(Math.random() * free.length)], at: now() });
+  save(); if (view === 'arena' || view === 'admin') refreshLive();
+}, 6000);
+addEventListener('storage', e => { if (e.key === KEY && e.newValue) { try { S = JSON.parse(e.newValue); } catch (x) { return; } refreshLive(); } });
+
+/* ---------- events ---------- */
+document.addEventListener('click', async e => {
+  const t = e.target.closest('[data-act]'); if (!t) return;
+  const a = t.dataset.act, id = t.dataset.id;
+  if (a === 'closeModal') { if (t.dataset.backdrop && e.target !== t) return; return closeModal(); }
+  switch (a) {
+    case 'nav': return setView(id);
+    case 'login': return openLogin();
+    case 'logout': return logout();
+    case 'create': return openCreate(t.dataset.tab);
+    case 'ctab': createState.tab = t.dataset.tab; { const cap = $('#ccap').value; drawCreate(); $('#ccap').value = cap; } return;
+    case 'cbg': createState.bg = +t.dataset.i; createState.img = null; { const cap = $('#ccap').value; drawCreate(); $('#ccap').value = cap; } return;
+    case 'like': return toggleLike(id);
+    case 'cmt': openCmt.has(id) ? openCmt.delete(id) : openCmt.add(id); return rerenderPost(id);
+    case 'save': if (needLogin('Log in to save posts')) return; { const p = S.posts.find(x => x.id === id), i = p.saved.indexOf(U.name); i >= 0 ? p.saved.splice(i, 1) : p.saved.push(U.name); save(); rerenderPost(id); toast(i >= 0 ? 'Removed from saved' : 'Saved'); } return;
+    case 'share': return copyText(location.href.split('#')[0] + '#post-' + id);
+    case 'story': return openStory(id);
+    case 'storyNext': return storyNext();
+    case 'storyPrev': return storyPrev();
+    case 'storyClose': return storyClose();
+    case 'chat': return openChat(id);
+    case 'chatBack': activeChat = null; return viewDM();
+    case 'recStart': return startRec();
+    case 'recCancel': return endRec(false);
+    case 'recSend': return endRec(true);
+    case 'play': { const b = t.closest('[data-bub]'); b.classList.add('playing'); setTimeout(() => b.classList.remove('playing'), (+t.dataset.d || 2) * 1000); return; }
+    case 'filter': filter = id; return viewArena();
+    case 'join': return join(id);
+    case 'addPrize': $('#prizeRows').insertAdjacentHTML('beforeend', prizeRow()); return;
+    case 'rmPrize': t.closest('[data-prize]').remove(); return;
+    case 'quick': $('#cends').value = toLocalInput(now() + (+t.dataset.ms)); return;
+    case 'draw': { const c = S.contests.find(x => x.id === id); if (!c.participants.length) return; c.ended = true; c.winner = c.participants[Math.floor(Math.random() * c.participants.length)].name; save(); renderAdminList(); return toast('Winner: ' + c.winner); }
+    case 'csv': return copyText(csvOf(S.contests.find(x => x.id === id)));
+    case 'endNow': S.contests.find(x => x.id === id).ended = true; save(); renderAdminList(); return toast('Contest ended');
+    case 'del':
+      if (confirmDel !== id) { confirmDel = id; renderAdminList(); setTimeout(() => { if (confirmDel === id) { confirmDel = null; if (view === 'admin') renderAdminList(); } }, 3000); return; }
+      S.contests = S.contests.filter(x => x.id !== id); confirmDel = null; save(); renderAdminList(); return toast('Contest deleted');
+  }
+});
+document.addEventListener('dblclick', e => { const m = e.target.closest('[data-dbl]'); if (m) toggleLike(m.dataset.dbl, true); });
+document.addEventListener('submit', e => {
+  const f = e.target.closest('[data-form]'); if (!f) return; e.preventDefault();
+  const kind = f.dataset.form, fd = new FormData(f);
+  if (kind === 'login') return login(fd.get('name') || '', (e.submitter && e.submitter.value) === 'admin');
+  if (kind === 'comment') {
+    if (needLogin('Log in to comment')) return;
+    const text = (fd.get('text') || '').trim(); if (!text) return;
+    const p = S.posts.find(x => x.id === f.dataset.id); p.comments.push({ u: U.name, text, t: now() }); openCmt.add(p.id); save(); return rerenderPost(p.id);
+  }
+  if (kind === 'create') return submitCreate(fd.get('caption') || '');
+  if (kind === 'msg') {
+    const text = (fd.get('text') || '').trim(); if (!text) return;
+    draft = ''; $('#minput').value = ''; return sendMsg({ type: 'text', text });
+  }
+  if (kind === 'publish') return publish(f);
+});
+document.addEventListener('input', e => {
+  if (e.target.id === 'csearch') { csearch = e.target.value; renderContacts(); }
+  if (e.target.id === 'minput') draft = e.target.value;
+  if (e.target.id === 'demoSw') { S.demo = e.target.checked; save(); toast(S.demo ? 'Demo traffic on' : 'Demo traffic off'); }
+});
+document.addEventListener('change', async e => {
+  const file = e.target.files && e.target.files[0]; if (!file) return;
+  try {
+    const img = await shrink(file);
+    if (e.target.id === 'cfile') { const cap = $('#ccap').value; createState.img = img; drawCreate(); $('#ccap').value = cap; }
+    if (e.target.id === 'mfile') sendMsg({ type: 'img', img });
+  } catch (x) { toast('Could not read that image'); }
+});
+document.addEventListener('keydown', e => { if (e.key === 'Escape') { if (sv) storyClose(); else closeModal(); } });
+
+/* ---------- boot ---------- */
+lastSig = S.contests.map(isEnded).join();
+renderAll();
+})();
+</script>
+
+
+</body></html>
